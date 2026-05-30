@@ -50,21 +50,23 @@ with tab1:
 
                 if res.status_code == 200:
                     data = res.json()
-                    pred_next  = data.get("prediction_next_week", 0)
                     pred_4w    = data.get("prediction_4_weeks_ahead", [])
                     total_proj = data.get("total_projected_income", 0)
                     direction  = data.get("income_direction", "Stable")
                     avg_4w     = data.get("avg_income_last_4w", 0)
 
-                    dir_icon  = {"Up": "📈", "Down": "📉", "Stable": "➡️"}.get(direction, "➡️")
+                    # Minggu +1 diambil dari array (index 0) — lebih valid & konsisten
+                    pred_minggu1 = pred_4w[0] if pred_4w else 0
+
+                    dir_icon = {"Up": "📈", "Down": "📉", "Stable": "➡️"}.get(direction, "➡️")
 
                     st.success("✅ Prediksi berhasil!")
 
                     col1, col2, col3 = st.columns(3)
                     col1.metric(
-                        "Prediksi Minggu Depan",
-                        f"Rp {pred_next:,.0f}",
-                        delta=f"Rp {pred_next - avg_4w:,.0f} vs rata-rata"
+                        "Minggu +1",
+                        f"Rp {pred_minggu1:,.0f}",
+                        delta=f"Rp {pred_minggu1 - avg_4w:,.0f} vs rata-rata"
                     )
                     col2.metric("Total Proyeksi 4 Minggu", f"Rp {total_proj:,.0f}")
                     col3.metric("Tren Pendapatan", f"{dir_icon} {direction}")
@@ -72,7 +74,6 @@ with tab1:
                     if pred_4w:
                         st.write("**Proyeksi per Minggu:**")
 
-                        # Bar chart dengan label yang benar
                         import pandas as pd
                         week_labels = [f"Minggu +{i+1}" for i in range(len(pred_4w))]
                         chart_data  = pd.DataFrame(
