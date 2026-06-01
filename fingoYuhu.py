@@ -20,18 +20,17 @@ tab1, tab2 = st.tabs(["📈 Prediksi Pendapatan", "🤖 Chat dengan Fingo"])
 # ═══════════════════════════════════════════════════════════════════════════
 with tab1:
     st.subheader("Prediksi Pendapatan 4 Minggu ke Depan")
-    st.write("Masukkan pendapatan kamu 12 minggu terakhir (dalam Rupiah):")
+    st.write("Masukkan pendapatan kamu **4 minggu terakhir** (dalam Rupiah):")
 
     with st.form("income_form"):
-        cols = st.columns(3)
+        cols = st.columns(4)                           # ← 4 kolom untuk 4 minggu
         history = []
-        for i in range(12):
-            col = cols[i % 3]
-            val = col.number_input(
+        for i in range(4):                             # ← loop 4, bukan 12
+            val = cols[i].number_input(
                 f"Minggu {i+1}",
                 min_value=0.0,
                 value=400_000.0,
-                step=100_000.0,
+                step=50_000.0,
                 format="%.0f",
                 key=f"week_{i}"
             )
@@ -49,14 +48,12 @@ with tab1:
                 )
 
                 if res.status_code == 200:
-                    data = res.json()
+                    data       = res.json()
                     pred_4w    = data.get("prediction_4_weeks_ahead", [])
                     total_proj = data.get("total_projected_income", 0)
                     direction  = data.get("income_direction", "Stable")
                     avg_4w     = data.get("avg_income_last_4w", 0)
-
-                    # Minggu +1 diambil dari array (index 0) — lebih valid & konsisten
-                    pred_minggu1 = pred_4w[0] if pred_4w else 0
+                    pred_next  = pred_4w[0] if pred_4w else 0
 
                     dir_icon = {"Up": "📈", "Down": "📉", "Stable": "➡️"}.get(direction, "➡️")
 
@@ -65,16 +62,15 @@ with tab1:
                     col1, col2, col3 = st.columns(3)
                     col1.metric(
                         "Minggu +1",
-                        f"Rp {pred_minggu1:,.0f}",
-                        delta=f"Rp {pred_minggu1 - avg_4w:,.0f} vs rata-rata"
+                        f"Rp {pred_next:,.0f}",
+                        delta=f"Rp {pred_next - avg_4w:,.0f} vs rata-rata"
                     )
                     col2.metric("Total Proyeksi 4 Minggu", f"Rp {total_proj:,.0f}")
                     col3.metric("Tren Pendapatan", f"{dir_icon} {direction}")
 
                     if pred_4w:
-                        st.write("**Proyeksi per Minggu:**")
-
                         import pandas as pd
+                        st.write("**Proyeksi per Minggu:**")
                         week_labels = [f"Minggu +{i+1}" for i in range(len(pred_4w))]
                         chart_data  = pd.DataFrame(
                             {"Proyeksi (Rp)": pred_4w},
@@ -118,22 +114,25 @@ with tab2:
         income = c1.number_input(
             "💰 Pendapatan Bulan Ini (Rp)",
             min_value=0.0,
-            value=5_000_000.0,
+            value=2_000_000.0,
             step=100_000.0,
             format="%.0f"
         )
         expense = c2.number_input(
             "💸 Pengeluaran Bulan Ini (Rp)",
             min_value=0.0,
-            value=3_500_000.0,
+            value=1_500_000.0,
             step=100_000.0,
             format="%.0f"
         )
         budget_remaining = income - expense
         impulsive_count  = st.slider("🛒 Jumlah Belanja Impulsif (kali)", 0, 20, 3)
 
-        st.metric("Sisa Budget", f"Rp {budget_remaining:,.0f}",
-                  delta="surplus" if budget_remaining >= 0 else "defisit")
+        st.metric(
+            "Sisa Budget",
+            f"Rp {budget_remaining:,.0f}",
+            delta="surplus" if budget_remaining >= 0 else "defisit"
+        )
 
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
@@ -157,20 +156,15 @@ with tab2:
                         json={
                             "user_message": user_input,
                             "financial_context": {
-                                "income"           : income,
-                                "expense"          : expense,
-                                "budget_remaining" : budget_remaining,
-                                "impulsive_count"  : impulsive_count,
+                                "income"          : income,
+                                "expense"         : expense,
+                                "budget_remaining": budget_remaining,
+                                "impulsive_count" : impulsive_count,
                             }
                         },
                         timeout=30
                     )
-
-                    if res.status_code == 200:
-                        reply = res.json().get("reply", "Fingo nggak bisa jawab sekarang.")
-                    else:
-                        reply = f"❌ Error {res.status_code}: {res.text}"
-
+                    reply = res.json().get("reply", "Fingo nggak bisa jawab sekarang.") if res.status_code == 200 else f"❌ Error {res.status_code}"
                 except requests.Timeout:
                     reply = "⏱️ Fingo timeout, coba lagi ya!"
                 except requests.ConnectionError:
